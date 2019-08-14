@@ -105,7 +105,7 @@ class MIPMap {
     // MIPMap Private Data
     const bool doTrilinear;
     const Float maxAnisotropy;
-    const ImageWrap wrapMode;
+    ImageWrap wrapMode;
     Point2i resolution;
     std::vector<std::unique_ptr<BlockedArray<T>>> pyramid;
     static PBRT_CONSTEXPR int WeightLUTSize = 128;
@@ -189,6 +189,10 @@ MIPMap<T>::MIPMap(const Point2i &res, const T *img, bool doTrilinear,
     pyramid[0].reset(
         new BlockedArray<T>(resolution[0], resolution[1],
                             resampledImage ? resampledImage.get() : img));
+
+    // Temporarily set wrap mode to clamp for proper sampling of non-square MIPMap levels
+    if (wrapMode == ImageWrap::Black)
+        this->wrapMode = ImageWrap::Clamp;
     for (int i = 1; i < nLevels; ++i) {
         // Initialize $i$th MIPMap level from $i-1$st level
         int sRes = std::max(1, pyramid[i - 1]->uSize() / 2);
@@ -205,6 +209,8 @@ MIPMap<T>::MIPMap(const Point2i &res, const T *img, bool doTrilinear,
                             Texel(i - 1, 2 * s + 1, 2 * t + 1));
         }, tRes, 16);
     }
+    // Restore originally selected wrap mode
+    this->wrapMode = wrapMode;
 
     // Initialize EWA filter weights if needed
     if (weightLut[0] == 0.) {
