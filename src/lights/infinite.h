@@ -51,9 +51,13 @@ namespace pbrt {
 // InfiniteAreaLight Declarations
 class InfiniteAreaLight : public Light {
   public:
+	// InfiniteAreaLight Public Types
+    enum class SamplingMethod { Uniform, Hemisphere, Distribution, HierarchicalWarping };
+
     // InfiniteAreaLight Public Methods
     InfiniteAreaLight(const Transform &LightToWorld, const Spectrum &power,
-                      int nSamples, const std::string &texmap);
+                      int nSamples, const std::string &texmap,
+                      SamplingMethod samplingMethod = SamplingMethod::Distribution);
     void Preprocess(const Scene &scene) {
         scene.WorldBound().BoundingSphere(&worldCenter, &worldRadius);
     }
@@ -70,10 +74,15 @@ class InfiniteAreaLight : public Light {
 
   private:
     // InfiniteAreaLight Private Data
+    const SamplingMethod samplingMethod;
     std::unique_ptr<MIPMap<RGBSpectrum>> Lmap;
     Point3f worldCenter;
     Float worldRadius;
     std::unique_ptr<Distribution2D> distribution;
+    std::unique_ptr<MIPMap<Float>> importanceMap;
+
+	// InfiniteAreaLight Private Methods
+    Point2f SampleImportanceMap(Point2f u, Float *pdf) const;
 };
 
 std::shared_ptr<InfiniteAreaLight> CreateInfiniteLight(
